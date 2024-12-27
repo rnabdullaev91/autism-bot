@@ -77,7 +77,7 @@ WSGI_APPLICATION = 'mchat_project.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mchat_db',
+        'NAME': 'bolajoni_survey',
         'USER': 'bolajoni_user',
         'PASSWORD': 'A^CyKu5nd^HRX6VH',
         'HOST': 'localhost',
