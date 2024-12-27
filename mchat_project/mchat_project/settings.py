@@ -78,9 +78,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'mchat_db',
-        'USER': 'mchat_user',
-        'PASSWORD': 'mchat_pass',
-        'HOST': 'localhost',
+        'USER': 'bolajoni_user',
+        'PASSWORD': 'A^CyKu5nd^HRX6VH',
+        'HOST': '/var/run/postgresql',
         'PORT': '5432',
     }
 }
