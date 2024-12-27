@@ -80,7 +80,7 @@ DATABASES = {
         'NAME': 'mchat_db',
         'USER': 'bolajoni_user',
         'PASSWORD': 'A^CyKu5nd^HRX6VH',
-        'HOST': '/var/run/postgresql',
+        'HOST': 'localhost',
         'PORT': '5432',
     }
 }
