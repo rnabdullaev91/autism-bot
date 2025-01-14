@@ -16,22 +16,23 @@ from .models import TelegramUser, MChatQuestion, SurveyResult, BotSettings
 from .utils import calculate_mchat_score, get_risk_level
 
 # ---------------------------------------------------------------------
-#                 CONSTANTS: STATES FOR CONVERSATION HANDLER
+# CONSTANTS: STATES FOR CONVERSATION HANDLER
 # ---------------------------------------------------------------------
-LANG_CHOICE, ASKING_QUESTION = range(2)
-# После окончания опроса мы используем ConversationHandler.END
+LANG_CHOICE, START_SURVEY, ASKING_QUESTION = range(3)
 
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     level=logging.INFO
 )
 
+
 # ---------------------------------------------------------------------
-#                 ASYNC WRAPPERS ДЛЯ ОПЕРАЦИЙ С БД
+# ASYNC WRAPPERS ДЛЯ ОПЕРАЦИЙ С БД
 # ---------------------------------------------------------------------
 @sync_to_async
 def async_get_bot_settings():
     return BotSettings.objects.first()
+
 
 @sync_to_async
 def async_get_or_create_telegram_user(telegram_id, username, lang):
@@ -45,14 +46,17 @@ def async_get_or_create_telegram_user(telegram_id, username, lang):
         tg_user.save()
     return tg_user
 
+
 @sync_to_async
 def async_get_telegram_user(telegram_id):
     return TelegramUser.objects.get(telegram_id=telegram_id)
+
 
 @sync_to_async
 def async_order_questions():
     """Возвращает список вопросов (list) в нужном порядке."""
     return list(MChatQuestion.objects.order_by('question_number'))
+
 
 @sync_to_async
 def async_create_survey_result(tg_user, score, risk_level):
@@ -62,30 +66,59 @@ def async_create_survey_result(tg_user, score, risk_level):
         risk_level=risk_level
     )
 
+
 # ---------------------------------------------------------------------
-#                     ФУНКЦИИ-ОБРАБОТЧИКИ
+# Локализация текстов
+# ---------------------------------------------------------------------
+def get_localized_text(lang, text_type):
+    texts = {
+        "question": {"ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Сұрақ"},
+        "survey_cancelled": {"ru": "Опрос был прерван.", "uz": "Сўров тухтатилди.", "en": "The survey was cancelled.",
+                             "kk": "Сауалнама тоқтатылды."},
+        "survey_start_button": {"ru": "Нажмите 'Начать', чтобы начать опрос.",
+                                "uz": "Сўровни бошлаш учун 'Сўров' тугмасини босинг",
+                                "en": "Press the 'Start' button to start survey",
+                                "kk": "Сураўды бастаў үшін «Бастаў» дегенге басыңыз."},
+        "finish_result_text": {"ru": "Ваш результат:", "uz": "Сизнинг натижангиз:", "en": "Your result:", "kk": "Сиздиң натийжеңіз:"},
+        "finish_result_low": {"ru": "Низкий риск", "uz": "Кам хавф", "en": "Low risk", "kk": "Аз қауып"},
+        "finish_result_medium": {"ru": "Средний риск", "uz": "Ўртача хавф", "en": "Medium risk", "kk": "Орташа қауып"},
+        "finish_result_high": {"ru": "Высокий риск", "uz": "Юқори хавф", "en": "High risk", "kk": "Жоғары қауып"}
+    }
+    return texts[text_type][lang]
+
+
+def get_localized_buttons(lang, button_type):
+    buttons = {
+        "yes": {"ru": "Да", "uz": "Ха", "en": "Yes", "kk": "Иә"},
+        "no": {"ru": "Нет", "uz": "Йўк", "en": "No", "kk": "Жоқ"},
+        "start": {"ru": "Начать", "uz": "Бошлаш", "en": "Start", "kk": "Бастау"},
+        "restart": {"ru": "Завершить", "uz": "Якунлаш", "en": "Finish", "kk": "Аяқтау"}
+    }
+    return buttons[button_type][lang]
+
+
+# ---------------------------------------------------------------------
+# ФУНКЦИИ-ОБРАБОТЧИКИ
 # ---------------------------------------------------------------------
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Команда /start — приветствие и предложение выбрать язык.
     """
     keyboard = [
-        ["Русский (ru)", "O'zbek (uz)"],
+        ["Русский (ru)", "Ўзбек (uz)"],
         ["English (en)", "Qaraqalpaqsha (kk)"]
     ]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
     await update.message.reply_text(
-        "Пожалуйста, выберите язык / Iltimos, tilni tanlang / Please choose a language / Тілді таңдаңыз:",
+        "Пожалуйста, выберите язык / Илтимос, тилни танланг / Please choose a language / Тілді таңдаңыз:",
         reply_markup=reply_markup
     )
-    # Переходим в состояние LANG_CHOICE
     return LANG_CHOICE
 
 
 async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Обработка выбранного языка + приветственное сообщение.
-    После выбора языка сразу переходим к задаванию вопросов (ASKING_QUESTION).
+    Обработка выбранного языка и вывод кнопки "Начать".
     """
     text = update.message.text.lower()
     user = update.message.from_user
@@ -99,60 +132,49 @@ async def choose_language(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         lang = 'kk'
 
-    # Создаём/обновляем пользователя
     tg_user = await async_get_or_create_telegram_user(
         telegram_id=user.id,
         username=user.username,
         lang=lang
     )
 
-    # Получаем настройки бота
-    bot_settings = await async_get_bot_settings()
-    if bot_settings:
-        if lang == 'ru':
-            welcome_msg = bot_settings.welcome_message_ru
-        elif lang == 'uz':
-            welcome_msg = bot_settings.welcome_message_uz
-        elif lang == 'en':
-            welcome_msg = bot_settings.welcome_message_en
-        else:
-            welcome_msg = bot_settings.welcome_message_kk
-    else:
-        welcome_msg = "Welcome! No settings found."
+    context.user_data['language'] = lang
+    start_button = get_localized_buttons(lang, "start")
+    keyboard = [[start_button]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
-    await update.message.reply_text(welcome_msg)
+    survey_button_text = get_localized_text(lang, "survey_start_button")
 
-    # Загружаем вопросы
+    await update.message.reply_text(survey_button_text, reply_markup=reply_markup)
+    return START_SURVEY
+
+
+async def start_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Начинает опрос, загружает вопросы и переходит к первому вопросу.
+    """
     questions = await async_order_questions()
     context.user_data['questions'] = questions
     context.user_data['answers'] = []
     context.user_data['current_index'] = 0
 
-    # Сразу задаём первый вопрос
     await ask_next_question(update, context)
-    # Переходим в состояние ASKING_QUESTION
     return ASKING_QUESTION
 
 
 async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Задаём текущий вопрос (если остались вопросы).
-    Вызывается из choose_language (первый вопрос) и handle_user_answer (следующие вопросы).
+    Задаёт текущий вопрос и добавляет кнопку "Завершить".
     """
     questions = context.user_data.get('questions', [])
     current_index = context.user_data.get('current_index', 0)
 
     if current_index >= len(questions):
-        # Вопросы закончились — завершаем
         return await finish_survey(update, context)
 
     question = questions[current_index]
+    lang = context.user_data.get('language')
 
-    # Узнаём язык пользователя (из БД)
-    tg_user = await async_get_telegram_user(update.message.from_user.id)
-    lang = tg_user.language
-
-    # Текст вопроса
     if lang == 'ru':
         q_text = question.question_text_ru
     elif lang == 'uz':
@@ -162,48 +184,53 @@ async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         q_text = question.question_text_kk
 
-    # Кнопки "Да"/"Нет"
-    keyboard = [["Да", "Нет"]]
+    question_label = get_localized_text(lang, "question")
+    yes_button = get_localized_buttons(lang, "yes")
+    no_button = get_localized_buttons(lang, "no")
+    restart_button = get_localized_buttons(lang, "restart")
+
+    keyboard = [[yes_button, no_button], [restart_button]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
-    await update.message.reply_text(
-        f"Вопрос {question.question_number}: {q_text}",
-        reply_markup=reply_markup
-    )
-    # Остаёмся в состоянии ASKING_QUESTION, ждём ответа
+    await update.message.reply_text(f"{question_label} {question.question_number}: {q_text}", reply_markup=reply_markup)
     return ASKING_QUESTION
 
 
 async def handle_user_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Принимаем ответ пользователя на текущий вопрос,
-    сохраняем в user_data, переходим к следующему вопросу.
+    Обрабатывает ответы пользователя.
     """
+    answer_text = update.message.text
+    lang = context.user_data.get('language')
+
+    if answer_text == get_localized_buttons(lang, "restart"):
+        context.user_data.clear()  # Сбрасываем состояние данных пользователя
+        await update.message.reply_text(
+            "Возвращаемся к выбору языка...",
+            reply_markup=ReplyKeyboardMarkup([
+                ["Русский (ru)", "Ўзбек (uz)"],
+                ["English (en)", "Qaraqalpaqsha (kk)"]
+            ], one_time_keyboard=True)
+        )
+        return LANG_CHOICE
+
     questions = context.user_data.get('questions', [])
     current_index = context.user_data.get('current_index', 0)
     answers = context.user_data.get('answers', [])
 
     if current_index < len(questions):
-        answer_text = update.message.text
         question_number = questions[current_index].question_number
-
-        # Сохраняем «yes»/«no» в зависимости от ответа
-        if answer_text.strip().lower().startswith('д'):  # "да"
-            user_answer = 'yes'
-        else:
-            user_answer = 'no'
-
+        user_answer = 'yes' if answer_text == get_localized_buttons(lang, "yes") else 'no'
         answers.append((question_number, user_answer))
         context.user_data['answers'] = answers
         context.user_data['current_index'] = current_index + 1
 
-    # Переходим к задаче следующего вопроса
     return await ask_next_question(update, context)
 
 
 async def finish_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
-    Завершаем опрос: подсчитываем результат, сохраняем в БД, выводим пользователю.
+    Завершает опрос, подсчитывает результат и сохраняет его в БД.
     """
     answers = context.user_data.get('answers', [])
     score = calculate_mchat_score(answers)
@@ -212,42 +239,54 @@ async def finish_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tg_user = await async_get_telegram_user(update.message.from_user.id)
     await async_create_survey_result(tg_user, score, risk_level)
 
-    if risk_level == 'LOW':
-        msg = f"Ваш результат: {score}. Низкий риск."
-    elif risk_level == 'MEDIUM':
-        msg = f"Ваш результат: {score}. Средний риск."
-    else:
-        msg = f"Ваш результат: {score}. Высокий риск."
+    lang = context.user_data.get('language')
+    finish_result_risk = get_localized_text(lang, "finish_result_text")
+    finish_result_low = get_localized_text(lang, "finish_result_low")
+    finish_result_medium = get_localized_text(lang, "finish_result_medium")
+    finish_result_high = get_localized_text(lang, "finish_result_high")
 
-    await update.message.reply_text(msg)
-    return ConversationHandler.END
+    if risk_level == 'LOW':
+        msg = f"{finish_result_risk} {score}. {finish_result_low}."
+    elif risk_level == 'MEDIUM':
+        msg = f"{finish_result_risk} {score}. {finish_result_medium}."
+    else:
+        msg = f"{finish_result_risk} {score}. {finish_result_high}."
+
+    restart_button = get_localized_buttons(lang, "restart")
+    keyboard = [[restart_button]]
+    reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+
+    await update.message.reply_text(msg, reply_markup=reply_markup)
+
+    context.user_data.clear()  # Сбрасываем данные пользователя
+
+    await update.message.reply_text(
+        "Возвращаемся к выбору языка...",
+        reply_markup=ReplyKeyboardMarkup([
+            ["Русский (ru)", "Ўзбек (uz)"],
+            ["English (en)", "Qaraqалpaqша (kk)"]
+        ], one_time_keyboard=True)
+    )
+    return LANG_CHOICE
 
 
 def run_telegram_bot():
     """
-    Запуск бота. Обычно вызывается, например, из django custom command
-    или скриптом manage.py (если написать custom command).
+    Запуск бота.
     """
-    # Здесь мы ещё не в асинхронном контексте, ORM можно вызывать без sync_to_async,
-    # но при желании это тоже можно обернуть в sync_to_async, если нужно.
     bot_settings = BotSettings.objects.first()
     if not bot_settings:
         print("BotSettings not found! Please add them via admin.")
         return
 
-    # Создаём приложение
     application = ApplicationBuilder().token(bot_settings.bot_token).build()
 
-    # Создаём ConversationHandler с двумя основными состояниями
     conv_handler = ConversationHandler(
         entry_points=[CommandHandler('start', start_command)],
         states={
-            LANG_CHOICE: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, choose_language),
-            ],
-            ASKING_QUESTION: [
-                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_answer),
-            ],
+            LANG_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_language)],
+            START_SURVEY: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_survey)],
+            ASKING_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_answer)],
         },
         fallbacks=[CommandHandler('start', start_command)],
     )
