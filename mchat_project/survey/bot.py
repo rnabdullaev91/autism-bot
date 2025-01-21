@@ -1,23 +1,26 @@
+import json
 import logging
 
 from asgiref.sync import sync_to_async
 from django.conf import settings
+from django.http import HttpResponse
+from django.views.decorators.csrf import csrf_exempt
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import (
-    ApplicationBuilder,
+    Application,
     CommandHandler,
+    ConversationHandler,
     MessageHandler,
     filters,
-    ContextTypes,
-    ConversationHandler
+    ContextTypes
 )
 
 from .models import TelegramUser, MChatQuestion, SurveyResult, BotSettings
 from .utils import calculate_mchat_score, get_risk_level
 
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 # CONSTANTS: STATES FOR CONVERSATION HANDLER
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
 LANG_CHOICE, START_SURVEY, ASKING_QUESTION = range(3)
 
 logging.basicConfig(
@@ -26,9 +29,9 @@ logging.basicConfig(
 )
 
 
-# ---------------------------------------------------------------------
-# ASYNC WRAPPERS ДЛЯ ОПЕРАЦИЙ С БД
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# ASYNC WRAPPERS ДЛЯ ОПЕРАЦИЙ С БД (sync_to_async)
+# ---------------------------------------------------------------------------------------
 @sync_to_async
 def async_get_bot_settings():
     return BotSettings.objects.first()
@@ -67,22 +70,40 @@ def async_create_survey_result(tg_user, score, risk_level):
     )
 
 
-# ---------------------------------------------------------------------
-# Локализация текстов
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# Локализация текстов (пример)
+# ---------------------------------------------------------------------------------------
 def get_localized_text(lang, text_type):
     texts = {
-        "question": {"ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Сұрақ"},
-        "survey_cancelled": {"ru": "Опрос был прерван.", "uz": "Сўров тухтатилди.", "en": "The survey was cancelled.",
-                             "kk": "Сауалнама тоқтатылды."},
-        "survey_start_button": {"ru": "Нажмите 'Начать', чтобы начать опрос.",
-                                "uz": "Сўровни бошлаш учун 'Сўров' тугмасини босинг",
-                                "en": "Press the 'Start' button to start survey",
-                                "kk": "Сураўды бастаў үшін «Бастаў» дегенге басыңыз."},
-        "finish_result_text": {"ru": "Ваш результат:", "uz": "Сизнинг натижангиз:", "en": "Your result:", "kk": "Сиздиң натийжеңіз:"},
-        "finish_result_low": {"ru": "Низкий риск", "uz": "Кам хавф", "en": "Low risk", "kk": "Аз қауып"},
-        "finish_result_medium": {"ru": "Средний риск", "uz": "Ўртача хавф", "en": "Medium risk", "kk": "Орташа қауып"},
-        "finish_result_high": {"ru": "Высокий риск", "uz": "Юқори хавф", "en": "High risk", "kk": "Жоғары қауып"}
+        "question": {
+            "ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Сұрақ"
+        },
+        "survey_cancelled": {
+            "ru": "Опрос был прерван.", "uz": "Сўров тухтатилди.",
+            "en": "The survey was cancelled.", "kk": "Сауалнама тоқтатылды."
+        },
+        "survey_start_button": {
+            "ru": "Нажмите 'Начать', чтобы начать опрос.",
+            "uz": "Сўровни бошлаш учун 'Сўров' тугмасини босинг",
+            "en": "Press the 'Start' button to start survey",
+            "kk": "Сураўды бастаў үшін «Бастаў» дегенге басыңыз."
+        },
+        "finish_result_text": {
+            "ru": "Ваш результат:", "uz": "Сизнинг натижангиз:",
+            "en": "Your result:", "kk": "Сиздиң натийжеңіз:"
+        },
+        "finish_result_low": {
+            "ru": "Низкий риск", "uz": "Кам хавф",
+            "en": "Low risk", "kk": "Аз қауып"
+        },
+        "finish_result_medium": {
+            "ru": "Средний риск", "uz": "Ўртача хавф",
+            "en": "Medium risk", "kk": "Орташа қауып"
+        },
+        "finish_result_high": {
+            "ru": "Высокий риск", "uz": "Юқори хавф",
+            "en": "High risk", "kk": "Жоғары қауып"
+        }
     }
     return texts[text_type][lang]
 
@@ -97,9 +118,9 @@ def get_localized_buttons(lang, button_type):
     return buttons[button_type][lang]
 
 
-# ---------------------------------------------------------------------
-# ФУНКЦИИ-ОБРАБОТЧИКИ
-# ---------------------------------------------------------------------
+# ---------------------------------------------------------------------------------------
+# Хэндлеры: start_command, choose_language, start_survey, ask_next_question, handle_user_answer, finish_survey
+# ---------------------------------------------------------------------------------------
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
     Команда /start — приветствие и предложение выбрать язык.
@@ -192,7 +213,10 @@ async def ask_next_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[yes_button, no_button], [restart_button]]
     reply_markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
-    await update.message.reply_text(f"{question_label} {question.question_number}: {q_text}", reply_markup=reply_markup)
+    await update.message.reply_text(
+        f"{question_label} {question.question_number}: {q_text}",
+        reply_markup=reply_markup
+    )
     return ASKING_QUESTION
 
 
@@ -204,13 +228,15 @@ async def handle_user_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
     lang = context.user_data.get('language')
 
     if answer_text == get_localized_buttons(lang, "restart"):
-        context.user_data.clear()  # Сбрасываем состояние данных пользователя
+        # Пользователь нажал "Завершить" (или аналог)
+        context.user_data.clear()  # Сбрасываем состояние
         await update.message.reply_text(
             "Возвращаемся к выбору языка...",
-            reply_markup=ReplyKeyboardMarkup([
-                ["Русский (ru)", "Ўзбек (uz)"],
-                ["English (en)", "Qaraqalpaqsha (kk)"]
-            ], one_time_keyboard=True)
+            reply_markup=ReplyKeyboardMarkup([[
+                "Русский (ru)", "Ўзбек (uz)"
+            ], [
+                "English (en)", "Qaraqalpaqsha (kk)"
+            ]], one_time_keyboard=True)
         )
         return LANG_CHOICE
 
@@ -220,8 +246,10 @@ async def handle_user_answer(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     if current_index < len(questions):
         question_number = questions[current_index].question_number
-        user_answer = 'yes' if answer_text == get_localized_buttons(lang, "yes") else 'no'
+        yes_button = get_localized_buttons(lang, "yes")
+        user_answer = 'yes' if answer_text == yes_button else 'no'
         answers.append((question_number, user_answer))
+
         context.user_data['answers'] = answers
         context.user_data['current_index'] = current_index + 1
 
@@ -258,38 +286,52 @@ async def finish_survey(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(msg, reply_markup=reply_markup)
 
-    context.user_data.clear()  # Сбрасываем данные пользователя
+    # Сбрасываем данные пользователя
+    context.user_data.clear()
 
     await update.message.reply_text(
         "Возвращаемся к выбору языка...",
-        reply_markup=ReplyKeyboardMarkup([
-            ["Русский (ru)", "Ўзбек (uz)"],
-            ["English (en)", "Qaraqалpaqша (kk)"]
-        ], one_time_keyboard=True)
+        reply_markup=ReplyKeyboardMarkup([[
+            "Русский (ru)", "Ўзбек (uz)"
+        ], [
+            "English (en)", "Qaraqалpaqsha (kk)"
+        ]], one_time_keyboard=True)
     )
     return LANG_CHOICE
 
 
-def run_telegram_bot():
+# ---------------------------------------------------------------------------------------
+# Создаём само приложение (Application) и регистрируем хэндлеры
+# ---------------------------------------------------------------------------------------
+application = Application.builder().token(settings.TELEGRAM_TOKEN).build()
+
+conv_handler = ConversationHandler(
+    entry_points=[CommandHandler("start", start_command)],
+    states={
+        LANG_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_language)],
+        START_SURVEY: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_survey)],
+        ASKING_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_answer)]
+    },
+    fallbacks=[],
+)
+application.add_handler(conv_handler)
+
+
+# ---------------------------------------------------------------------------------------
+# Django view для приёма вебхуков
+# ---------------------------------------------------------------------------------------
+@csrf_exempt
+async def telegram_webhook(request):
     """
-    Запуск бота.
+    Основная view-функция, которая будет принимать POST-запросы от Telegram.
     """
-    bot_settings = BotSettings.objects.first()
-    if not bot_settings:
-        print("BotSettings not found! Please add them via admin.")
-        return
-
-    application = ApplicationBuilder().token(bot_settings.bot_token).build()
-
-    conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start_command)],
-        states={
-            LANG_CHOICE: [MessageHandler(filters.TEXT & ~filters.COMMAND, choose_language)],
-            START_SURVEY: [MessageHandler(filters.TEXT & ~filters.COMMAND, start_survey)],
-            ASKING_QUESTION: [MessageHandler(filters.TEXT & ~filters.COMMAND, handle_user_answer)],
-        },
-        fallbacks=[CommandHandler('start', start_command)],
-    )
-
-    application.add_handler(conv_handler)
-    application.run_polling()
+    if request.method == "POST":
+        # Считываем JSON-данные из body
+        update_data = json.loads(request.body.decode("utf-8"))
+        # Превращаем их в объект Update
+        update = Update.de_json(update_data, application.bot)
+        # Передаём апдейты в приложение Telegram
+        await application.process_update(update)
+        return HttpResponse("OK")
+    else:
+        return HttpResponse("Method not allowed", status=405)
