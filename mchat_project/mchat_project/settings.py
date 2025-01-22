@@ -30,6 +30,8 @@ ALLOWED_HOSTS = ['bolajonim.uz', 'www.bolajonim.uz', 'localhost']
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+TELEGRAM_TOKEN = "8039455276:AAGA52B-r3R6PZji706fqjaEiD4QCxn8l8A"
+
 # Application definition
 
 INSTALLED_APPS = [
