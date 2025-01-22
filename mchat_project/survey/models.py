@@ -2,6 +2,7 @@ from django.db import models
 
 
 class TelegramUser(models.Model):
+    objects = None
     telegram_id = models.BigIntegerField(unique=True)
     username = models.CharField(max_length=150, blank=True, null=True)
     # language хранит выбранный язык, например 'ru', 'uz', 'en', 'kk'
@@ -12,6 +13,7 @@ class TelegramUser(models.Model):
 
 
 class MChatQuestion(models.Model):
+    objects = None
     question_number = models.PositiveIntegerField()
     question_text_ru = models.TextField()
     question_text_uz = models.TextField()
@@ -23,6 +25,7 @@ class MChatQuestion(models.Model):
 
 
 class SurveyResult(models.Model):
+    objects = None
     RISK_LEVEL_CHOICES = (
         ('LOW', 'Низкий риск'),
         ('MEDIUM', 'Средний риск'),
@@ -38,6 +41,7 @@ class SurveyResult(models.Model):
 
 
 class BotSettings(models.Model):
+    objects = None
     bot_token = models.CharField(max_length=200)
 
     # Приветственные сообщения
