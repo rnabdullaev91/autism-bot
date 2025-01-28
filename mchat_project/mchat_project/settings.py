@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-9=kvpq+^xhopv@tuzw5)p3(wn@wg)3k9&0wa77o@u!0g*123y4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*', '127.0.0.1:8000']
+ALLOWED_HOSTS = ['*']
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
@@ -79,27 +79,27 @@ WSGI_APPLICATION = 'mchat_project.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
 
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.postgresql',
-#         'NAME': 'bolajoni_survey',
-#         'USER': 'bolajoni_user',
-#         'PASSWORD': 'A^CyKu5nd^HRX6VH',
-#         'HOST': 'localhost',
-#         'PORT': '5432',
-#     }
-# }
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mchat_db',
-        'USER': 'mchat_user',
-        'PASSWORD': 'mchat_pass',
+        'NAME': 'bolajoni_survey',
+        'USER': 'bolajoni_user',
+        'PASSWORD': 'A^CyKu5nd^HRX6VH',
         'HOST': 'localhost',
         'PORT': '5432',
     }
 }
+
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.postgresql',
+#         'NAME': 'mchat_db',
+#         'USER': 'mchat_user',
+#         'PASSWORD': 'mchat_pass',
+#         'HOST': 'localhost',
+#         'PORT': '5432',
+#     }
+# }
 
 
 
