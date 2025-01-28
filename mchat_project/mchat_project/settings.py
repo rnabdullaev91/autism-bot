@@ -26,22 +26,23 @@ SECRET_KEY = 'django-insecure-9=kvpq+^xhopv@tuzw5)p3(wn@wg)3k9&0wa77o@u!0g*123y4
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['bolajonim.uz', 'www.bolajonim.uz', 'localhost']
+ALLOWED_HOSTS = ['*', '127.0.0.1:8000']
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-TELEGRAM_TOKEN = "8039455276:AAGA52B-r3R6PZji706fqjaEiD4QCxn8l8A"
+
+APPEND_SLASH=False
 
 # Application definition
 
 INSTALLED_APPS = [
-    'survey',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'survey.apps.SurveyConfig',
 ]
 
 MIDDLEWARE = [
