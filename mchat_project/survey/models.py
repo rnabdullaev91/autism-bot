@@ -4,9 +4,11 @@ from django.db import models
 class TelegramUser(models.Model):
     objects = None
     telegram_id = models.BigIntegerField(unique=True)
-    username = models.CharField(max_length=150, blank=True, null=True)
     # language хранит выбранный язык, например 'ru', 'uz', 'en', 'kk'
     language = models.CharField(max_length=2, default='ru')
+    username = models.CharField(max_length=255, null=True, blank=True)
+    current_question_index = models.IntegerField(default=0)  # <--- добавляем поле
+    answers = models.JSONField(default=list)  # <--- храним ответы
 
     def __str__(self):
         return f"{self.username or self.telegram_id}"
@@ -48,7 +50,7 @@ class BotSettings(models.Model):
     welcome_message_ru = models.TextField(default="Здравствуйте! Добро пожаловать в M-CHAT-R бот.")
     welcome_message_uz = models.TextField(default="Salom! M-CHAT-R botiga xush kelibsiz.")
     welcome_message_en = models.TextField(default="Hello! Welcome to the M-CHAT-R bot.")
-    welcome_message_kk = models.TextField(default="Сәлем! M-CHAT-R ботына қош келдіңіз.")
+    welcome_message_kk = models.TextField(default="Sálem! M-CHAT-R botına xosh keldińiz.")
 
     # Если нужно хранить другие настройки, можете добавить поля
 

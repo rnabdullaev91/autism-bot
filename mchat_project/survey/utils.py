@@ -1,3 +1,6 @@
+import logging
+
+
 def calculate_mchat_score(answers):
     risk_questions_except = [2, 5, 12]
     score = 0
@@ -11,7 +14,9 @@ def calculate_mchat_score(answers):
                 score += 1
     return score
 
+
 def get_risk_level(score):
+    logging.info(score)
     if score <= 2:
         return 'LOW'
     elif 3 <= score <= 7:
