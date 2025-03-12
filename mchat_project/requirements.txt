@@ -8,3 +8,4 @@ pytz
 gunicorn
 uvicorn
 whitenoise
+psycopg
