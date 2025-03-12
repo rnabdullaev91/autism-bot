@@ -5,3 +5,6 @@ asgiref>=3.0
 httpx>=0.20
 anyio>=3.0
 pytz
+gunicorn
+uvicorn
+whitenoise

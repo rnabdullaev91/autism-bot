@@ -121,16 +121,16 @@ def async_create_survey_result(tg_user, score, risk_level):
 # -----------------------------------------------------------
 def get_localized_text(lang, text_type):
     texts = {
-        "question": {"ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Сұрақ"},
+        "question": {"ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Soraw"},
         "survey_cancelled": {
             "ru": "Опрос был прерван.", "uz": "Сўров тухтатилди.",
             "en": "The survey was cancelled.", "kk": "Сауалнама тоқтатылды."
         },
         "survey_start_button": {
             "ru": "Нажмите 'Начать', чтобы начать опрос.",
-            "uz": "Сўровни бошлаш учун 'Сўров' тугмасини босинг",
+            "uz": "Сўровни бошлаш учун 'Бошлаш' тугмасини босинг",
             "en": "Press the 'Start' button to start survey",
-            "kk": "Сураўды бастаў үшін «Бастаў» дегенге басыңыз."
+            "kk": "Sorawnamanı baslaw ushın 'Baslaw' túymesin basıńız.."
         },
         "finish_result_text": {
             "ru": "Ваш результат:", "uz": "Сизнинг натижангиз:",
@@ -151,9 +151,9 @@ def get_localized_text(lang, text_type):
 
 def get_localized_buttons(lang, button_type):
     buttons = {
-        "yes": {"ru": "Да", "uz": "Ха", "en": "Yes", "kk": "Иә"},
-        "no": {"ru": "Нет", "uz": "Йўк", "en": "No", "kk": "Жоқ"},
-        "start": {"ru": "Начать", "uz": "Бошлаш", "en": "Start", "kk": "Бастау"},
+        "yes": {"ru": "Да", "uz": "Ха", "en": "Yes", "kk": "Awa"},
+        "no": {"ru": "Нет", "uz": "Йўк", "en": "No", "kk": "Yaq"},
+        "start": {"ru": "Начать", "uz": "Бошлаш", "en": "Start", "kk": "Baslaw"},
         "restart": {"ru": "Завершить", "uz": "Якунлаш", "en": "Finish", "kk": "Аяқтау"}
     }
     return buttons[button_type][lang]
