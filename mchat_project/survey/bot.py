@@ -124,7 +124,7 @@ def get_localized_text(lang, text_type):
         "question": {"ru": "Вопрос", "uz": "Савол", "en": "Question", "kk": "Soraw"},
         "survey_cancelled": {
             "ru": "Опрос был прерван.", "uz": "Сўров тухтатилди.",
-            "en": "The survey was cancelled.", "kk": "Сауалнама тоқтатылды."
+            "en": "The survey was cancelled.", "kk": "Sorawnama biykar etildi."
         },
         "survey_start_button": {
             "ru": "Нажмите 'Начать', чтобы начать опрос.",
@@ -134,16 +134,16 @@ def get_localized_text(lang, text_type):
         },
         "finish_result_text": {
             "ru": "Ваш результат:", "uz": "Сизнинг натижангиз:",
-            "en": "Your result:", "kk": "Сиздиң натийжеңіз:"
+            "en": "Your result:", "kk": "Siziń nátiyjeńiz:"
         },
         "finish_result_low": {
-            "ru": "Низкий риск", "uz": "Кам хавф", "en": "Low risk", "kk": "Аз қауып"
+            "ru": "Низкий риск", "uz": "Кам хавф", "en": "Low risk", "kk": "Kem qáwip"
         },
         "finish_result_medium": {
-            "ru": "Средний риск", "uz": "Ўртача хавф", "en": "Medium risk", "kk": "Орташа қауып"
+            "ru": "Средний риск", "uz": "Ўртача хавф", "en": "Medium risk", "kk": "Ortasha qáwip"
         },
         "finish_result_high": {
-            "ru": "Высокий риск", "uz": "Юқори хавф", "en": "High risk", "kk": "Жоғары қауып"
+            "ru": "Высокий риск", "uz": "Юқори хавф", "en": "High risk", "kk": "Joqarı qáwip"
         }
     }
     return texts[text_type][lang]
@@ -154,7 +154,7 @@ def get_localized_buttons(lang, button_type):
         "yes": {"ru": "Да", "uz": "Ха", "en": "Yes", "kk": "Awa"},
         "no": {"ru": "Нет", "uz": "Йўк", "en": "No", "kk": "Yaq"},
         "start": {"ru": "Начать", "uz": "Бошлаш", "en": "Start", "kk": "Baslaw"},
-        "restart": {"ru": "Завершить", "uz": "Якунлаш", "en": "Finish", "kk": "Аяқтау"}
+        "restart": {"ru": "Завершить", "uz": "Якунлаш", "en": "Finish", "kk": "Tamamlaw"}
     }
     return buttons[button_type][lang]
 
